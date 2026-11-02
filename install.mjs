@@ -12,7 +12,7 @@ import { homedir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const KEEP = new Set(["skills-update/sources.json"]);
+const KEEP = new Set(["skills-update/sources.json", "skills-update/yang-claude.json"]);
 
 const repo = dirname(fileURLToPath(import.meta.url));
 const dest = process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
