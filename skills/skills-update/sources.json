@@ -1,0 +1,5 @@
+{
+  "find-skills":         { "repo": "vercel-labs/skills",                  "path": "skills/find-skills",         "hash": "76a98a285cb0434f3d39e1a873823556330e398b", "local": "## Contents 목차 추가" },
+  "html-plan":           { "repo": "plannotator/effective-html",          "path": "skills/html-plan",           "hash": "799c7fa971764c0110a6f3b5cf3f0bdf6aba5c03", "local": "description 수정, ## Contents 목차 추가" },
+  "html-diagram":        { "repo": "plannotator/effective-html",          "path": "skills/html-diagram",        "hash": "9d773f19558970f4074244f1dd6aa0e499209045", "local": "description 수정, ## Contents 목차 추가" }
+}
