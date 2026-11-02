@@ -8,6 +8,7 @@ Personal Claude Code skills and agents, installed on macOS and Windows with `nod
 - `agents/<name>.md`: subagents that skills here depend on.
 - `install.mjs`: copies both into `~/.claude` (or `$CLAUDE_CONFIG_DIR`). Repo files overwrite installed ones, except paths in its `KEEP` set (local state a skill rewrites itself, such as `skills-update/sources.json`). Add new state files there.
 - `README.md`: Korean, user-facing. Add each new skill or agent to its table.
+- `release.mjs`, `VERSION`, `CHANGELOG.md`: releases (see below).
 
 ## Cross-platform rules
 
@@ -19,3 +20,9 @@ Personal Claude Code skills and agents, installed on macOS and Windows with `nod
 
 - Edit the skill here, then `node install.mjs <name>` to install it and test it in Claude Code.
 - `node install.mjs --dry-run` shows what would change without writing.
+
+## Releases
+
+- One version for the whole repo: `VERSION` plus an annotated tag `vX.Y.Z`. `/skills-update` installs only the highest tag (`install.mjs --version <tag>`), so other PCs get a change only after it is released. yang-claude is versioned the same way.
+- patch: fixes and wording. minor: a new skill, agent or feature. major: something that breaks an existing setup (a renamed skill, a changed state file format).
+- To release, run `node release.mjs <patch|minor|major>` (or `node release.mjs <bump> ~/workspace/yang-claude`). It bumps `VERSION` and adds a `CHANGELOG.md` section from the commit subjects since the last tag, and prints the add, commit, tag and push commands. It never commits; run each printed command on its own so the guarded ones show their prompt. Tidy the CHANGELOG section into user-facing Korean before committing.

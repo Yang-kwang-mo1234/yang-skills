@@ -2,33 +2,66 @@
 // 마지막으로 반영한 커밋(yang-claude.json)을 기준으로 3-way 비교해서, 저장소만 바뀐 파일과
 // PC에서도 고친 파일(충돌)을 구분한다. macOS, Linux, Windows 공통. Node 18 이상과 git만 필요.
 //
+// 반영할 내용은 작업 폴더가 아니라 릴리스 태그에서 읽는다. 기본은 가장 높은 v* 태그,
+// --ref <태그> 를 주면 그 버전(되돌리기에도 쓴다). 태그가 하나도 없으면 HEAD.
+// 모든 명령에 같은 --ref 를 줘야 한다.
+//
+//   node yang-claude.mjs version                  installed <반영한 버전> target <반영할 버전>
 //   node yang-claude.mjs plan                     바뀐 것만 한 줄씩: 상태 경로
 //   node yang-claude.mjs stage <폴더> <경로...>    <폴더>/old 에 PC 파일, <폴더>/new 에 적용될 파일 (감사·diff용)
 //   node yang-claude.mjs apply <경로...> [--repo <키>]...  백업 후 반영. settings.json 충돌 키는 --repo 로 준 것만 저장소 값
-//   node yang-claude.mjs done                     지금 저장소 HEAD 를 반영 기준으로 기록
+//   node yang-claude.mjs done                     반영할 버전을 반영 기준으로 기록
 //
 // 상태: add(PC에 없음) update(저장소만 바뀜) conflict(둘 다 바뀜, 또는 기준 없이 다름)
 //       local(PC만 바뀜, 건드리지 않음) removed(저장소에서 지워짐, 건드리지 않음)
 //       settings(병합 결과가 PC와 다름) settings-conflict <키>(양쪽 값이 달라 PC 값을 유지한 키)
 import { execFileSync } from "node:child_process";
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const stateFile = join(here, "yang-claude.json");
 const repo = process.env.YANG_CLAUDE_DIR || join(homedir(), "workspace", "yang-claude");
-const src = join(repo, "global");
 const dest = process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
 const SETTINGS = "settings.json";
 
-const git = (...args) =>
-  execFileSync("git", ["-C", repo, ...args], { stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 << 20 });
+const [cmd, ...args] = process.argv.slice(2);
+const optValues = (name) => args.flatMap((a, i) => (args[i - 1] === name ? [a] : []));
+const takeRepo = optValues("--repo");
+const paths = args.filter((a, i) => !a.startsWith("--") && !["--repo", "--ref"].includes(args[i - 1]));
+
+const git = (...a) =>
+  execFileSync("git", ["-C", repo, ...a], { stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 << 20 });
 const readOrNull = (p) => (existsSync(p) ? readFileSync(p) : null);
 const same = (a, b) => (a === null ? b === null : b !== null && a.equals(b));
 
-const base = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, "utf8")).commit : null;
+if (!existsSync(join(repo, ".git"))) {
+  console.error(`error no git checkout at ${repo} (set YANG_CLAUDE_DIR or clone yang-claude there)`);
+  process.exit(1);
+}
+
+const state = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, "utf8")) : {};
+const base = state.commit ?? null;
+
+// 반영할 버전: --ref, 없으면 가장 높은 v* 태그, 태그가 없으면 HEAD.
+const target =
+  optValues("--ref")[0] ??
+  (git("tag", "--list", "v*", "--sort=-v:refname").toString().split("\n")[0].trim() || "HEAD");
+let targetCommit;
+try {
+  targetCommit = git("rev-parse", "--verify", "--quiet", `${target}^{commit}`).toString().trim();
+} catch {
+  console.error(`error no version ${target} (run: git -C ${repo} fetch --tags, then git -C ${repo} tag)`);
+  process.exit(1);
+}
+const targetFiles = git("ls-tree", "-r", "--name-only", targetCommit, "--", "global/")
+  .toString()
+  .split("\n")
+  .filter(Boolean)
+  .map((f) => f.slice("global/".length));
+const readTarget = (rel) => git("show", `${targetCommit}:global/${rel}`);
 
 // 기준 커밋의 global/<경로> 내용. 기준이 없거나 그 커밋에 파일이 없으면 null.
 function baseFile(rel) {
@@ -40,13 +73,6 @@ function baseFile(rel) {
   }
 }
 
-function* walk(dir) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, entry.name);
-    if (entry.isDirectory()) yield* walk(p);
-    else yield relative(src, p).split("\\").join("/");
-  }
-}
 
 // ---- settings.json 3-way 병합 ----
 
@@ -98,7 +124,7 @@ function mergedSettings(takeRepo = []) {
   const merged = merge3(
     parse(baseFile(SETTINGS)),
     parse(pcBuf),
-    parse(readFileSync(join(src, SETTINGS))),
+    parse(readTarget(SETTINGS)),
     "",
     conflicts,
     takeRepo,
@@ -113,14 +139,14 @@ function mergedSettings(takeRepo = []) {
 
 function plan() {
   const out = [];
-  for (const rel of walk(src)) {
+  for (const rel of targetFiles) {
     if (rel === SETTINGS) {
       const { changed, conflicts } = mergedSettings();
       if (changed) out.push(`settings ${rel}`);
       for (const key of conflicts) out.push(`settings-conflict ${key}`);
       continue;
     }
-    const rp = readFileSync(join(src, rel));
+    const rp = readTarget(rel);
     const pc = readOrNull(join(dest, rel));
     const b = baseFile(rel);
     if (same(pc, rp)) continue;
@@ -131,7 +157,7 @@ function plan() {
   }
   if (base) {
     try {
-      const gone = git("diff", "--name-only", "--diff-filter=D", base, "HEAD", "--", "global/").toString();
+      const gone = git("diff", "--name-only", "--diff-filter=D", base, targetCommit, "--", "global/").toString();
       for (const line of gone.split("\n").filter(Boolean)) out.push(`removed ${line.slice("global/".length)}`);
     } catch {
       // 기준 커밋이 히스토리에 없으면 지워진 파일은 알 수 없다
@@ -143,7 +169,7 @@ function plan() {
 function stage(dir, rels) {
   for (const rel of rels) {
     const pc = readOrNull(join(dest, rel));
-    const next = rel === SETTINGS ? mergedSettings().text : readFileSync(join(src, rel));
+    const next = rel === SETTINGS ? mergedSettings().text : readTarget(rel);
     for (const [side, buf] of [["old", pc], ["new", next]]) {
       if (buf === null) continue;
       const p = join(dir, side, rel);
@@ -164,7 +190,7 @@ function apply(rels, takeRepo) {
     }
     mkdirSync(dirname(target), { recursive: true });
     if (rel === SETTINGS) writeFileSync(target, mergedSettings(takeRepo).text);
-    else cpSync(join(src, rel), target);
+    else writeFileSync(target, readTarget(rel));
     if (rel.startsWith("hooks/")) chmodSync(target, 0o755);
     console.log(`applied ${rel}`);
   }
@@ -172,25 +198,16 @@ function apply(rels, takeRepo) {
 }
 
 function done() {
-  const commit = git("rev-parse", "HEAD").toString().trim();
-  writeFileSync(stateFile, JSON.stringify({ commit }, null, 2) + "\n");
-  console.log(`recorded ${commit}`);
+  writeFileSync(stateFile, JSON.stringify({ version: target, commit: targetCommit }, null, 2) + "\n");
+  console.log(`recorded ${target} (${targetCommit.slice(0, 7)})`);
 }
 
-if (!existsSync(src)) {
-  console.error(`error no ${src} (set YANG_CLAUDE_DIR or clone yang-claude there)`);
-  process.exit(1);
-}
-
-const [cmd, ...args] = process.argv.slice(2);
-const takeRepo = args.flatMap((a, i) => (args[i - 1] === "--repo" ? [a] : []));
-const paths = args.filter((a, i) => a !== "--repo" && args[i - 1] !== "--repo");
-
-if (cmd === "plan") plan();
+if (cmd === "version") console.log(`installed ${state.version ?? (base ? base.slice(0, 7) : "none")} target ${target}`);
+else if (cmd === "plan") plan();
 else if (cmd === "stage" && paths.length > 1) stage(paths[0], paths.slice(1));
 else if (cmd === "apply" && paths.length) apply(paths, takeRepo);
 else if (cmd === "done") done();
 else {
-  console.error("usage: yang-claude.mjs plan | stage <dir> <path...> | apply <path...> [--repo <key>]... | done");
+  console.error("usage: yang-claude.mjs version | plan | stage <dir> <path...> | apply <path...> [--repo <key>]... | done  [--ref <tag>]");
   process.exit(1);
 }

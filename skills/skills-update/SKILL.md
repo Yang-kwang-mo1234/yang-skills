@@ -1,6 +1,6 @@
 ---
 name: skills-update
-description: yang-skills(직접 만든 스킬)를 최신으로 설치하고, yang-claude 저장소의 전역 설정 변경을 ~/.claude에 반영하고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 업데이트한다. /skills-update 로만 실행.
+description: yang-skills(직접 만든 스킬)와 yang-claude(전역 설정)를 최신 릴리스로 맞추거나 특정 버전으로 되돌리고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 업데이트한다. /skills-update 로만 실행.
 disable-model-invocation: true
 ---
 
@@ -8,21 +8,27 @@ disable-model-invocation: true
 
 0(yang-skills) → A(전역 설정) → B(외부 스킬) 순서로 한다. 하나가 막혀도 나머지는 진행한다.
 
+yang-skills와 yang-claude는 릴리스 태그(`vX.Y.Z`)로 버전을 관리한다. 평소에는 가장 높은 태그를 설치하고, main에만 올라간 커밋은 설치하지 않는다.
+
+**되돌리기**: 인자로 `yang-skills <태그>` 또는 `yang-claude <태그>`가 오면(예: `/skills-update yang-claude v1.0.0`) 그 저장소만 그 버전으로 맞추고 B는 하지 않는다. 0단계 3번이나 A단계를 아래의 "최신 태그" 대신 그 태그로 진행한다. 태그 목록이 필요하면 `git -C <폴더> tag --list "v*" --sort=-v:refname`.
+
 ## 0. yang-skills (직접 만든 스킬)
 
 `~/workspace/yang-skills`(`YANG_SKILLS_DIR`가 있으면 그 폴더)를 이 PC에 맞춘다. 이 스킬 자신도 여기서 설치되므로 가장 먼저 한다.
 
-1. 폴더가 없으면 "yang-skills 저장소 없음"이라고 하고 A로 간다. 있으면 `git -C <폴더> status --porcelain`이 비어 있는지 본다. 비어 있지 않으면 고치는 중인 것이니 pull, 설치하지 않고 그 사실만 보고하고 A로 간다.
-2. `git -C <폴더> pull --ff-only`. 실패하면 이유를 보고하고 A로 간다.
-3. `git -C <폴더> rev-parse HEAD`와 `~/.claude/skills/skills-update/yang-skills.json`의 `commit`을 비교한다. 같으면 "yang-skills 최신"이라고 하고 A로 간다.
-4. 다르면 `git -C <폴더> log --oneline <기록된 커밋>..HEAD`로 바뀐 커밋을 보여 준다(기록 파일이 없거나 그 커밋을 찾을 수 없으면 최근 5개). 그다음 `node <폴더>/install.mjs`를 실행한다. 설치가 끝나면 커밋이 자동으로 기록된다.
-5. 설치 출력에 `skill  skills-update: updated ... SKILL.md`가 있으면 지금 따르는 지침이 옛 버전이다. `~/.claude/skills/skills-update/SKILL.md`를 다시 읽고 A부터는 새 지침을 따른다.
+1. 폴더가 없으면 "yang-skills 저장소 없음"이라고 하고 A로 간다. 있으면 `git -C <폴더> fetch --tags origin`. 작업 트리가 깨끗하면(`git -C <폴더> status --porcelain`이 비어 있으면) `git -C <폴더> pull --ff-only`도 한다. 설치 스크립트를 최신으로 두기 위해서다. 실패해도 계속한다.
+2. 최신 태그는 `git -C <폴더> tag --list "v*" --sort=-v:refname`의 첫 줄. 태그가 없으면 "yang-skills 릴리스 없음"이라고 하고 A로 간다.
+3. `~/.claude/skills/skills-update/yang-skills.json`의 `version`과 비교한다.
+   - 같으면 "yang-skills <버전> 최신"이라고 하고 A로 간다.
+   - `version`이 `dev-`로 시작하면 작업 폴더에서 직접 설치한 개발 버전이다. 덮어쓰지 말고, 최신 릴리스로 바꿀지 물어본다.
+   - 다르면 `git -C <폴더> show <최신 태그>:CHANGELOG.md`에서 설치된 버전보다 새 섹션만 보여 준다. 그다음 `node <폴더>/install.mjs --version <최신 태그>`. 설치가 끝나면 버전이 자동으로 기록된다.
+4. 설치 출력에 `skill  skills-update: updated ... SKILL.md`가 있으면 지금 따르는 지침이 옛 버전이다. `~/.claude/skills/skills-update/SKILL.md`를 다시 읽고 A부터는 새 지침을 따른다.
 
 ## A. yang-claude 전역 설정 (저장소 → 이 PC)
 
-`~/workspace/yang-claude`(`YANG_CLAUDE_DIR`가 있으면 그 폴더)의 `global/`을 `~/.claude`에 반영한다. PC → 저장소 방향은 하지 않는다. 아래 `Y`는 `node ~/.claude/skills/skills-update/yang-claude.mjs`를 뜻한다.
+`~/workspace/yang-claude`(`YANG_CLAUDE_DIR`가 있으면 그 폴더)의 `global/`을 `~/.claude`에 반영한다. PC → 저장소 방향은 하지 않는다. 내용은 작업 폴더가 아니라 릴리스 태그에서 읽으므로 그 저장소에서 고치는 중인 파일과 섞이지 않는다. 아래 `Y`는 `node ~/.claude/skills/skills-update/yang-claude.mjs`를 뜻하고, 되돌리기일 때는 모든 `Y` 명령 뒤에 `--ref <태그>`를 붙인다.
 
-1. 저장소가 없으면 `git clone https://github.com/Yang-kwang-mo1234/yang-claude.git <폴더>`. 있으면 `git -C <폴더> pull --ff-only`. 실패하면(로컬 커밋, 수정 중인 파일 등) 이유를 보여 주고 A는 받아 둔 상태 그대로 진행할지 물어본다.
+1. 저장소가 없으면 `git clone https://github.com/Yang-kwang-mo1234/yang-claude.git <폴더>`. 있으면 `git -C <폴더> fetch --tags origin`. 그다음 `Y version`(`installed <반영한 버전> target <반영할 버전>`). 둘이 같으면 "yang-claude <버전> 최신"이라고 하고 6단계로 간다. 다르면 `git -C <폴더> show <target>:CHANGELOG.md`에서 새 섹션을 보여 준다.
 2. `Y plan` 실행. 출력이 없으면 "전역 설정 변경 없음"이라고 말하고 6단계로 간다. 출력된 줄(`상태 경로`)을 표로 보여 준다.
    - `add`, `update`: 저장소에서만 바뀐 것. 적용 대상.
    - `conflict`: PC에서도 고쳤거나 기준 커밋이 없어 판단할 수 없는 것. `Y stage <스크래치>/yc <경로>` 후 `diff -u <스크래치>/yc/old/<경로> <스크래치>/yc/new/<경로>`를 보여 주고, 파일마다 저장소 것으로 덮어쓸지 PC 것을 둘지 사용자가 고르게 한다.
@@ -31,7 +37,7 @@ disable-model-invocation: true
    - `local`, `removed`: PC만 바뀐 것, 저장소에서 지워진 것. 건드리지 않고 보고만 한다.
 3. **보안 감사**: 적용할 것 중 `hooks/` 파일이나 `settings.json`이 있으면, 비어 있는 새 폴더 `<스크래치>/audit/yang-claude/`에 `Y stage <그 폴더> <경로...>`로 old/new를 만들고 `security-auditor`에 이름(`yang-claude`), 저장소(`Yang-kwang-mo1234/yang-claude`), old·new 폴더 경로만 넘긴다. 첫 줄이 `VERDICT: PASS`가 아니면 그 파일들은 적용하지 않고 발견 사항을 보여 준 뒤 사용자가 명시적으로 진행하라고 할 때까지 기다린다. 나머지 파일은 감사 없이 진행한다.
 4. 적용: `Y apply <경로...> [--repo <키>]...`. 경로는 `add`·`update` 전부와 사용자가 덮어쓰기로 고른 `conflict`, `settings.json`(감사 통과 시). `--repo`는 저장소 값을 쓰기로 한 `settings-conflict` 키마다 하나씩. 덮어쓴 파일은 출력된 `backup` 폴더에 남는다.
-5. 모든 항목이 적용됐거나 사용자가 PC 것을 두기로 정했으면 `Y done`으로 지금 커밋을 기준으로 기록한다. 감사에서 막혔거나 사용자가 나중에 정하겠다고 한 항목이 하나라도 있으면 `done`을 하지 않는다. 그래야 다음 실행에서 다시 나온다.
+5. 모든 항목이 적용됐거나 사용자가 PC 것을 두기로 정했으면 `Y done`으로 반영한 버전을 기록한다. 감사에서 막혔거나 사용자가 나중에 정하겠다고 한 항목이 하나라도 있으면 `done`을 하지 않는다. 그래야 다음 실행에서 다시 나온다.
 6. 바뀐 내용을 B의 보고와 함께 표로 보고한다. `settings.json`, 훅, 에이전트, `CLAUDE.md`가 바뀌었으면 Claude Code를 다시 시작해야 한다고 알린다.
 
 ## B. 외부 스킬
