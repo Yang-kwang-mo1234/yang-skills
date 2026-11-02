@@ -59,7 +59,7 @@ node ~/workspace/yang-skills/install.mjs --version v1.0.0
 
 | 이름 | 종류 | 하는 일 | 추가로 필요한 것 |
 |---|---|---|---|
-| `skills-update` | 스킬 | `/skills-update`로 실행. 이 저장소(yang-skills)를 최신 릴리스 태그로 설치하고, [yang-claude](https://github.com/Yang-kwang-mo1234/yang-claude)의 최신 릴리스 `global/`을 `~/.claude`에 반영(마지막 반영 버전 기준 3-way 비교, PC에서도 고친 파일은 diff를 보고 선택, `settings.json`은 키 단위 병합, 훅·설정 변경은 감사 후 적용)하고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 `security-auditor`의 감사를 통과한 것만 업데이트. 두 저장소 모두 특정 버전으로 되돌릴 수 있음 | [GitHub CLI](https://cli.github.com) (`gh auth login`), git |
+| `skills-update` | 스킬 | `/skills-update`로 실행. 이 저장소(yang-skills)를 최신 릴리스 태그로 설치하고, [yang-claude](https://github.com/Yang-kwang-mo1234/yang-claude)의 최신 릴리스 `global/`을 `~/.claude`에 반영(마지막 반영 버전 기준 3-way 비교, PC에서도 고친 파일은 diff를 보고 선택, `settings.json`은 키 단위 병합, 훅·설정 변경은 감사 후 적용)하고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 `security-auditor`의 감사를 통과한 것만 업데이트. 두 저장소 모두 특정 버전으로 되돌릴 수 있음. `/skills-update status`는 설치된 모든 스킬의 `현재 → 신규` 버전만 보여 주고 아무것도 바꾸지 않음 | [GitHub CLI](https://cli.github.com) (`gh auth login`), git |
 | `security-auditor` | 에이전트 (Opus, 읽기 전용) | 스킬·CLI 업데이트를 설치 전에 감사하고 `VERDICT: PASS/FAIL`로 보고. `skills-update`가 사용 | - |
 
 ## 새 스킬 추가하기

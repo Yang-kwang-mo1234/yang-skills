@@ -1,12 +1,23 @@
 ---
 name: skills-update
-description: yang-skills(직접 만든 스킬)와 yang-claude(전역 설정)를 최신 릴리스로 맞추거나 특정 버전으로 되돌리고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 업데이트한다. /skills-update 로만 실행.
+description: yang-skills(직접 만든 스킬)와 yang-claude(전역 설정)를 최신 릴리스로 맞추거나 특정 버전으로 되돌리고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 업데이트한다. /skills-update status 는 설치된 모든 스킬의 업데이트 여부만 보여 준다. /skills-update 로만 실행.
 disable-model-invocation: true
 ---
 
 # Skills Update
 
-0(yang-skills) → A(전역 설정) → B(외부 스킬) 순서로 한다. 하나가 막혀도 나머지는 진행한다.
+**status**: 인자가 `status`면(`/skills-update status`) 아무것도 설치·수정하지 않고 아래만 한다.
+
+1. `node ~/.claude/skills/skills-update/status.mjs` 실행. 탭으로 구분된 줄(`상태 이름 위치 출처 현재 신규`)이 나온다.
+2. 표 하나로 보여 준다. 열은 이름, 위치(`claude`=`~/.claude/skills`, `agents`=`~/.agents/skills`, `global`=yang-claude 전역 설정), 출처, 버전. 버전 열은 상태에 따라 쓴다.
+   - `update`: `현재 → 신규` (예: `v1.0.0 → v1.1.0`, `76a98a2 → 1b2c3d4`)
+   - `latest`: `현재 (최신)`
+   - `untracked`: `확인 불가 (출처 기록 없음)`
+   - `error`: `확인 실패` (네트워크, `gh auth`, 저장소 없음 등)
+   `update`인 행을 맨 위에 둔다.
+3. 표 아래에 업데이트가 있는 개수를 한 줄로 쓰고, 있으면 `/skills-update`로 업데이트할 수 있다고 알린다. 여기서 끝낸다.
+
+그 밖에는 0(yang-skills) → A(전역 설정) → B(외부 스킬) 순서로 한다. 하나가 막혀도 나머지는 진행한다.
 
 yang-skills와 yang-claude는 릴리스 태그(`vX.Y.Z`)로 버전을 관리한다. 평소에는 가장 높은 태그를 설치하고, main에만 올라간 커밋은 설치하지 않는다.
 
