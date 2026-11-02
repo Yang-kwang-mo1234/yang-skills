@@ -1,12 +1,22 @@
 ---
 name: skills-update
-description: yang-claude 저장소의 전역 설정 변경을 ~/.claude에 반영하고, 설치된 스킬 중 업스트림이 바뀐 것을 찾아 업데이트한다. /skills-update 로만 실행.
+description: yang-skills(직접 만든 스킬)를 최신으로 설치하고, yang-claude 저장소의 전역 설정 변경을 ~/.claude에 반영하고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 업데이트한다. /skills-update 로만 실행.
 disable-model-invocation: true
 ---
 
 # Skills Update
 
-A(전역 설정)를 먼저 끝내고 B(외부 스킬)로 간다. 둘 중 하나가 막혀도 다른 하나는 진행한다.
+0(yang-skills) → A(전역 설정) → B(외부 스킬) 순서로 한다. 하나가 막혀도 나머지는 진행한다.
+
+## 0. yang-skills (직접 만든 스킬)
+
+`~/workspace/yang-skills`(`YANG_SKILLS_DIR`가 있으면 그 폴더)를 이 PC에 맞춘다. 이 스킬 자신도 여기서 설치되므로 가장 먼저 한다.
+
+1. 폴더가 없으면 "yang-skills 저장소 없음"이라고 하고 A로 간다. 있으면 `git -C <폴더> status --porcelain`이 비어 있는지 본다. 비어 있지 않으면 고치는 중인 것이니 pull, 설치하지 않고 그 사실만 보고하고 A로 간다.
+2. `git -C <폴더> pull --ff-only`. 실패하면 이유를 보고하고 A로 간다.
+3. `git -C <폴더> rev-parse HEAD`와 `~/.claude/skills/skills-update/yang-skills.json`의 `commit`을 비교한다. 같으면 "yang-skills 최신"이라고 하고 A로 간다.
+4. 다르면 `git -C <폴더> log --oneline <기록된 커밋>..HEAD`로 바뀐 커밋을 보여 준다(기록 파일이 없거나 그 커밋을 찾을 수 없으면 최근 5개). 그다음 `node <폴더>/install.mjs`를 실행한다. 설치가 끝나면 커밋이 자동으로 기록된다.
+5. 설치 출력에 `skill  skills-update: updated ... SKILL.md`가 있으면 지금 따르는 지침이 옛 버전이다. `~/.claude/skills/skills-update/SKILL.md`를 다시 읽고 A부터는 새 지침을 따른다.
 
 ## A. yang-claude 전역 설정 (저장소 → 이 PC)
 

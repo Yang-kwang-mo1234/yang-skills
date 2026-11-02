@@ -7,7 +7,11 @@
 //
 // Files in the repo overwrite the installed copies. Files listed in KEEP are local state
 // that the skill itself updates, so they are copied only when missing.
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
+//
+// A full install (no names, no --dry-run) records the repo commit in
+// skills-update/yang-skills.json, so /skills-update can tell whether this PC is behind.
+import { execFileSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -76,6 +80,25 @@ if (existsSync(agentsDir)) {
   for (const file of readdirSync(agentsDir).filter((f) => f.endsWith(".md"))) {
     const status = install(join(agentsDir, file), join(dest, "agents", file), false);
     console.log(`agent  ${file}: ${status === "same" ? "up to date" : status}`);
+  }
+}
+
+// Record the installed commit only when everything was installed from a clean checkout,
+// otherwise the record would claim files that are not on this PC.
+if (!dryRun && !only.length && !problems) {
+  try {
+    const git = (...a) => execFileSync("git", ["-C", repo, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    if (git("status", "--porcelain").trim()) {
+      console.log("note   uncommitted changes in the repo: installed commit not recorded");
+    } else {
+      const commit = git("rev-parse", "HEAD").trim();
+      const record = join(dest, "skills", "skills-update", "yang-skills.json");
+      mkdirSync(dirname(record), { recursive: true });
+      writeFileSync(record, JSON.stringify({ commit }, null, 2) + "\n");
+      console.log(`record yang-skills ${commit.slice(0, 7)}`);
+    }
+  } catch {
+    console.log("note   not a git checkout: installed commit not recorded");
   }
 }
 

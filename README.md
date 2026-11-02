@@ -30,10 +30,13 @@ node $HOME\workspace\yang-skills\install.mjs
 - `skills/`는 `~/.claude/skills/`로, `agents/`는 `~/.claude/agents/`로 복사합니다. `CLAUDE_CONFIG_DIR`가 있으면 그 폴더에 설치합니다.
 - 저장소의 파일이 설치된 파일을 덮어씁니다. 스킬이 스스로 고치는 상태 파일(`skills-update/sources.json`, `skills-update/yang-claude.json`)만 이미 있으면 그대로 둡니다.
 - 여러 번 실행해도 안전합니다.
+- 전체 설치가 끝나면 설치한 커밋을 `~/.claude/skills/skills-update/yang-skills.json`에 기록합니다. `/skills-update`가 이 기록으로 이 PC가 뒤처졌는지 판단합니다. 커밋하지 않은 변경이 있거나 일부 스킬만 설치하면 기록하지 않습니다.
 - `node install.mjs --dry-run`: 실제로 바꾸지 않고 바뀔 내용만 보여 줍니다.
 - `node install.mjs <스킬 이름...>`: 지정한 스킬만 설치합니다. 에이전트는 항상 설치합니다.
 
 ## 업데이트
+
+Claude Code에서 `/skills-update`를 실행하면 pull과 설치까지 한 번에 합니다. 직접 하려면:
 
 ```bash
 git -C ~/workspace/yang-skills pull
@@ -47,7 +50,7 @@ node ~/workspace/yang-skills/install.mjs
 
 | 이름 | 종류 | 하는 일 | 추가로 필요한 것 |
 |---|---|---|---|
-| `skills-update` | 스킬 | `/skills-update`로 실행. [yang-claude](https://github.com/Yang-kwang-mo1234/yang-claude)의 `global/` 변경을 `~/.claude`에 반영(마지막 반영 커밋 기준 3-way 비교, PC에서도 고친 파일은 diff를 보고 선택, `settings.json`은 키 단위 병합, 훅·설정 변경은 감사 후 적용)하고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 `security-auditor`의 감사를 통과한 것만 업데이트 | [GitHub CLI](https://cli.github.com) (`gh auth login`), git |
+| `skills-update` | 스킬 | `/skills-update`로 실행. 이 저장소(yang-skills)를 pull해서 설치된 커밋과 다르면 다시 설치하고, [yang-claude](https://github.com/Yang-kwang-mo1234/yang-claude)의 `global/` 변경을 `~/.claude`에 반영(마지막 반영 커밋 기준 3-way 비교, PC에서도 고친 파일은 diff를 보고 선택, `settings.json`은 키 단위 병합, 훅·설정 변경은 감사 후 적용)하고, 설치된 외부 스킬 중 업스트림이 바뀐 것을 `security-auditor`의 감사를 통과한 것만 업데이트 | [GitHub CLI](https://cli.github.com) (`gh auth login`), git |
 | `security-auditor` | 에이전트 (Opus, 읽기 전용) | 스킬·CLI 업데이트를 설치 전에 감사하고 `VERDICT: PASS/FAIL`로 보고. `skills-update`가 사용 | - |
 
 ## 새 스킬 추가하기
