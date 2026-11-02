@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.0 - 2026-11-02
+
+- `/skills-update status`: 설치된 모든 스킬(`~/.claude/skills`, `~/.agents/skills`)과 yang-claude 전역 설정의 업데이트 여부를 `현재 → 신규`로 보여 줌. 아무것도 바꾸지 않음
+- 업스트림 확인을 병렬로 바꿔 `/skills-update`의 확인 단계가 빨라짐
+
 ## v1.0.0 - 2026-11-02
 
 첫 릴리스.
